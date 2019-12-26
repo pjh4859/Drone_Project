@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <math.h>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
 #define Device_Address 0x68	/*Device Address/Identifier for MPU9250*/
 #define MAG_ADDRESS		0x0C
 
-#define SUM(a,b)  (a)+(b)
+#define PICON		3.141592/180.0
+#define RAD2DGR		180.0/3.141592
 
 #define GYRO_FULL_SCALE_250_DPS    0x00 
 #define GYRO_FULL_SCALE_500_DPS    0x08
@@ -81,10 +83,29 @@ short read_raw_data(int addr,int a) {
 	return value;
 }
 
+void Accel_to_degree(float* Acc[3], float* Acc_degree[3]) {
+	float Accel_xz = 0;
+	float Accel_yz = 0;
+
+	Accel_xz = sqrt(pow(Acc[0], 2) + pow(Acc[2], 2));
+	Acc_degree[0] = atan(Acc[1] / Accel_xz) * RAD2DGR;
+
+	Accel_yz = sqrt(pow(Acc[1], 2) + pow(Acc[2], 2));
+	Acc_degree[1] = atan(-Acc[0] / Accel_xz) * RAD2DGR;
+
+	Acc_degree[2] = 0;
+}
+
 int main() {
 	float Acc_x, Acc_y, Acc_z;
+	float* Acc[3];
+	float* Acc_dgr[3];
 	float Gyro_x, Gyro_y, Gyro_z;
+	float* Gyro[3];
+	float* Gyro_dgr[3];
 	float Mag_x, Mag_y, Mag_z;
+	float* Mag[3];
+	float* Mag_dgr[3];
 	float Ax = 0, Ay = 0, Az = 0;
 	float Gx = 0, Gy = 0, Gz = 0;
 	float Mx = 0, My = 0, Mz = 0;
@@ -98,6 +119,12 @@ int main() {
 		Acc_x = read_raw_data(ACCEL_XOUT_H,0);
 		Acc_y = read_raw_data(ACCEL_YOUT_H,0);
 		Acc_z = read_raw_data(ACCEL_ZOUT_H,0);
+		*Acc[0] = read_raw_data(ACCEL_XOUT_H,0);
+		*Acc[1] = read_raw_data(ACCEL_YOUT_H,0);
+		*Acc[2] = read_raw_data(ACCEL_ZOUT_H,0);
+
+		Accel_to_degree(Acc, Acc_dgr);
+
 		Gyro_x = read_raw_data(GYRO_XOUT_H,0);
 		Gyro_y = read_raw_data(GYRO_YOUT_H,0);
 		Gyro_z = read_raw_data(GYRO_ZOUT_H,0);
@@ -105,6 +132,8 @@ int main() {
 		Mag_x = read_raw_data(MAG_XOUT_H,1);
 		Mag_y = read_raw_data(MAG_YOUT_H,1);
 		Mag_z = read_raw_data(MAG_ZOUT_H,1);
+
+
 
 
 		/* Divide raw value by sensitivity scale factor */
@@ -119,10 +148,12 @@ int main() {
 		My = Mag_y;
 		Mz = Mag_z;
 
-		printf("\n Gx=%.3f ¡Æ/s\tGy=%.3f ¡Æ/s\tGz=%.3f ¡Æ/s\tAx=%.3f g\tAy=%.3f g\tAz=%.3f g\n", Gx, Gy, Gz, Ax, Ay, Az);
+		printf("\n Gx=%.3f dgr/s\tGy=%.3f dgr/s\tGz=%.3f dgr/s\tAx=%.3f g\tAy=%.3f g\tAz=%.3f g\n", Gx, Gy, Gz, Ax, Ay, Az);
 		printf("Gx=%6.3f \tGy=%6.3f \tGz=%6.3f \tAx=%6.3f \tAy=%6.3f \tAz=%6.3f \n", Gyro_x, Gyro_y, Gyro_z, Acc_x, Acc_y, Acc_z);
+		printf("Gx=%6.3f \tGy=%6.3f \tGz=%6.3f \tAx=%6.3f \tAy=%6.3f \tAz=%6.3f \n", Gyro_x, Gyro_y, Gyro_z, Acc[0], Acc[1], Acc[2]);
+		printf("Gx=%6.3f \tGy=%6.3f \tGz=%6.3f \tAx=%6.3f \tAy=%6.3f \tAz=%6.3f \n", Gyro_x, Gyro_y, Gyro_z, Acc_dgr[0], Acc_dgr[1], Acc_dgr[2]);
 		printf("Mx=%6.3f \tMy=%6.3f \tMz=%6.3f\n", Mx,My,Mz);
-		delay(100);
+		delay(1000);
 	}
 	return 0;
 }
